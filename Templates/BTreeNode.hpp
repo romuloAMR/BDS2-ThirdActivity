@@ -2,6 +2,7 @@
 #define BTREENODE_HPP
 
 #include <vector>
+#include <iostream>
 
 template <typename T, int ORDER>
 class BTreeNode {
@@ -13,24 +14,38 @@ class BTreeNode {
         int size;
 
         // Constructors and Destructors
-        BTreeNode(bool isLeaf = true);
-        ~BTreeNode();
+        BTreeNode(bool isLeaf = true)
+            : leaf(isLeaf), size(0)
+        {
+            this->keys.resize(ORDER);
+            this->children.resize(ORDER + 1);
+        }
+        ~BTreeNode()
+        {
+            if (!leaf) {
+                for (int i = 0; i <= size; i++) {
+                    delete children[i];
+                }
+            }
+        }
+
+        // Print
+        void print(int level = 0)
+        {
+            std::cout << std::string(level * 4, ' ');
+            std::cout << "Lv "<< level << " |-";
+            for (int i = 0; i < this->size; i++) {
+                std::cout << this->keys[i] << "-";
+            }
+            std::cout << "|" << std::endl;
+
+            if (!leaf) {
+                for (int i = 0; i <= size; i++) {
+                    children[i]->print(level + 1);
+                }
+            }
+        }
+        
 };
 
 #endif
-
-// Constructors and Destructors
-template <typename T, int ORDER>
-inline BTreeNode<T, ORDER>::BTreeNode(bool isLeaf)
-{
-    this->leaf = isLeaf;
-    this->size = 0;
-    this->keys.resize(ORDER);
-    this->children.resize(ORDER + 1, nullptr);
-}
-template <typename T, int ORDER>
-BTreeNode<T, ORDER>::~BTreeNode()
-{
-    // Nothing
-}
-
