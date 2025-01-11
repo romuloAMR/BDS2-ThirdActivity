@@ -4,6 +4,7 @@ FLAGS = -Wall -pedantic -Ofast -march=native
 all: main
 	./main
 	rm main
+	rm -f main Objects/*.o
 
 main: Objects/main.o
 	$(CXX) $(FLAGS) $^ -o main
