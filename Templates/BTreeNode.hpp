@@ -17,8 +17,8 @@ class BTreeNode {
         BTreeNode(bool isLeaf = true)
             : leaf(isLeaf), size(0)
         {
-            this->keys.resize(ORDER);
-            this->children.resize(ORDER + 1);
+            this->keys.resize(2*ORDER + 1);
+            this->children.resize(2*ORDER + 2);
         }
         ~BTreeNode()
         {
