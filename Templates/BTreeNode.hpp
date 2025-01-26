@@ -65,14 +65,6 @@ public:
             }
         }
     }
-
-    /**
-     * @brief Retorna a capacidade do nó.
-     */
-
-    /**
-     * @brief Retorna a quantidade de chaves no nó.
-     */
 };
 
 #endif

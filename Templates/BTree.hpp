@@ -99,7 +99,110 @@ private:
         }
     }
 
+    
 
+    void removeAux(BTreeNode<T, ORDER>* parent, BTreeNode<T, ORDER>* node, int key){
+        /**
+         * Em todos os casos, iremos ter primeramente o nó.
+         */
+        BTreeNode* parent = nullptr;
+        BTreeNode* currentNode = search(key, parent);
+        if(currentNode == nullptr){
+            std::cout << "No key was found.\n";
+            return;
+        }
+
+        //
+        // Primeiro caso:
+        // Estamos removendo de um folha.
+        //
+
+        if(currentNode->leaf){
+            if(currentNode->size > ORDER + 1){
+            // CASO 1:
+            // Removemos de uma folha com d + 1 elementos.
+                
+               //< Vamos calcular a posição de índice da chave para remover diretamente ela.
+               auto it = std::find(currentNode->keys.begin(), currentNode->keys.end(), key);
+               size_t index = std::distance(currentNode->keys.begin(), it);
+
+               //< Removemos a chave (index) e o ponteiro dela (index + 1). Diminuímos o tamanho.
+               currentNode->keys.erase(currentNode->keys.begin() + index); //< Removemos a chave.
+               currentNode->children.erase(currentNode->children.begin() + index + 1); //< Removemos o ponteiro para o filho do removido.
+               currentNode->size--; //< Diminuímos o tamanho.
+
+               std::sort(currentNode->keys.begin(), currentNode->keys.end()); //< Ordenamos as chaves.
+
+            } else if (currentNode->size == ORDER){ // Tenho que achar um jeito de puxar os irmãos.
+                /*
+                 * Caso 3: a folha tem d elementos mas possui uma irmã adjacente
+                 * e as duas juntas possuem menos de 2d elementos
+                 */
+
+                // Cálculo dos nós irmãos adjacentes.
+                auto it = std::find(parent->children.begin(), parent->children.end(), currentNode);
+                size_t index = std::distance(parent->children.begin(), it);
+                BTreeNode<T, ORDER>* rightBrother = &parent->children[index+1]; //< Irmão da direita
+                BTreeNode<T, ORDER>* leftBrother = &parent->children[index-1]; //< Irmão da esquerda
+
+                if((rightBrother->size + currentNode->size) < 2*ORDER && (leftBrother->size + currentNode->size) < 2*ORDER){
+                    if(rightBrother->size > leftBrother->size){
+                        // Desreferenciar o irmão da esquerda
+
+                    } else {
+                        // Desreferenciar o irmão da direita
+                    }
+
+                } else { //< Isso quer dizer que uma das irmãs adjacentes possui 2d ou mais elementos
+                    if(rightBrother->size > leftBrother->size){
+                        // Desreferenciar o irmão da esquerda
+                    } else {
+                        // Desreferenciar o irmão da direita
+                    }
+
+                }
+            }
+        } else { // Aqui quer dizer que o nó não é uma folha
+            /**
+             * Se o nó não for uma folha, isso quer dizer que ele tem um 
+             * ou mais filhos. Logo, podemos fazer algumas brincadeiras.
+             * 
+             * A primeira coisa que quero fazer é avaliar qual dois dois filhos da 
+             * chave que será removida é ver qual dos dois tem mais elementos.
+             * O que tiver mais elementos, nós tiramos, colocamos no local do pai
+             * e depois removemos o vetor novamente. Perceba que disso estaremos perdendo
+             * um dos ponteiros de filhos do lado que iremos remover.
+             */
+            // Cálculo dos nós irmãos adjacentes.
+            auto it = std::find(parent->children.begin(), parent->children.end(), currentNode);
+            size_t index = std::distance(parent->children.begin(), it);
+
+            // Verificar os limites para evitar acesso inválido
+            BTreeNode<T, ORDER>* leftBrother = (index > 0) ? parent->children[index - 1] : nullptr;
+            BTreeNode<T, ORDER>* rightBrother = (index + 1 < parent->children.size()) ? parent->children[index + 1] : nullptr;
+
+            // Escolher o irmão preferido com base no tamanho (garantindo que eles existam)
+            int chosenBrotherIndex = -1;
+            BTreeNode<T, ORDER>* chosenBrother = nullptr;
+            if (leftBrother && rightBrother){
+                chosenBrother = (rightBrother->size > leftBrother->size) ? rightBrother : leftBrother;
+            } else if (leftBrother){
+                chosenBrother = leftBrother; // Só tem o irmão da esquerda
+                chosenBrotherIndex = chosenBrother->size-1;
+            } else if (rightBrother){
+                chosenBrother = rightBrother; // Só tem o irmão da direita
+                chosenBrotherIndex = 0;
+            }
+
+            // Trocamos a chave com o irmão escolhido
+            std::swap(currentNode->keys[index], chosenBrother[chosenBrotherIndex]);
+            chosenBrother->keys.erase(chosenBrother->keys.begin() + chosenBrotherIndex);
+            chosenBrother->size--;
+
+            // Ordenar
+            std::sort(chosenBrother->keys.begin(), chosenBrother->keys.end());
+        }
+    }
 
 public:
     /**
@@ -136,6 +239,57 @@ public:
         } else {
             root->print();
         }
+    }
+
+    /**
+     * @brief Busca uma chave na árvore B.
+     * @return Ponteiro para o nó que contém a chave, ou nullptr se a chave não foi encontrada.
+     */
+    BTreeNode<T, ORDER>* searchAux(BTreeNode<T, ORDER>* currentNode, int key, BTreeNode<T, ORDER>>*& parent){
+        /**
+         * Se for nulo, então não temos nada para fazer.
+         */
+        */
+        if(currentNode == nullptr){
+            return nullptr;
+        }
+
+        int i = 0;
+        /**
+         * Percorreremos as chaves do pai atual para localizar a chave que queremos.
+         */
+        while(i < currentNode->size && key > currentNode->keys[i]){
+            i++;
+        }
+
+        /**
+         * Se a chave foi encontrada no atual nó, nós retornaremos.
+         */
+        if(i < currentNode->size && key == currentNode->keys[i]){
+            return currentNode;
+        }
+
+        /**
+         * Se for uma folha e não chegamos na chave, retornamos nada
+        */        
+        if(currentNode->leaf){
+            return nullptr;
+        }
+
+       /**
+        * Antes de descer, atualizamos o pai.
+        */
+        parent = currentNode;
+        return searchAux(currentNode->children[i], key, parent);
+    }
+
+    BTreeNode<T, ORDER>* search(int key, BTreeNode<T, ORDER>>*& parent){
+        BTreeNode<T, ORDER>* parent = nullptr;
+        return searchAux(root, key, parent);
+    }
+
+    void remove(T key){
+        //TODO
     }
 };
 
