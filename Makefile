@@ -18,3 +18,4 @@ Objects/main.o: mainTest.cpp
 clean:
 	del /Q main.exe
 	del /Q Objects\*.o
+

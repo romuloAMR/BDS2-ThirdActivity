@@ -16,6 +16,7 @@ int main() {
     tree.insert(60);
     tree.insert(70);
     tree.insert(80);
+   
     tree.insert(90);
     tree.insert(100);
     tree.insert(110);
@@ -24,6 +25,9 @@ int main() {
     tree.insert(140);
     tree.insert(150);
     tree.insert(160);
+
+    tree.insert(82);
+    tree.insert(87);
     
 
     tree.generateDotFile("arvoreB.dot");
@@ -31,7 +35,7 @@ int main() {
     std::cout << "Árvore após inserções:" << std::endl;
     tree.printTree();
 
-    tree.remove(110);
+    tree.remove(40);
     tree.generateDotFile("arvoreBREM.dot");
 
     /*// Remoção de chaves
