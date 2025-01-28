@@ -9,7 +9,7 @@ all: main
 main: Objects/main.o
 	$(CXX) $(FLAGS) $^ -o main
 
-Objects/main.o: main.cpp
+Objects/main.o: mainTest.cpp
 	$(CXX) $(FLAGS) -c $< -o $@
 
 clean:
