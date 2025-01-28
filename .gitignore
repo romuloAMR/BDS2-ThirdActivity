@@ -1,1 +1,5 @@
 Objects/*.o
+*.dot
+edb2Arqs/
+*.png
+*.exe

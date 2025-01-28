@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <algorithm>
+#include <fstream>
+#include <string.h>
 #include <iostream>
 
 template <typename T, int ORDER>
@@ -71,6 +73,10 @@ private:
         parent->size++;
     }
 
+   
+
+    
+
     void insertAux(BTreeNode<T, ORDER>* parent, BTreeNode<T, ORDER>* node, int indexFullChild, T key) {
         int i = node->size - 1;
         if (node->leaf) {
@@ -108,111 +114,193 @@ private:
         }
     }
 
-    void removeAux(BTreeNode<T, ORDER>* parent, BTreeNode<T, ORDER>* node, int key) {
-        if (node == nullptr) return;
+    // Função para buscar uma chave na árvore
+    BTreeNode<T, ORDER>* search(int key, BTreeNode<T, ORDER>*& parent) {
+    BTreeNode<T, ORDER>* currentNode = root;
+    parent = nullptr;
 
-        int i = 0;
-        while (i < node->size && key > node->keys[i]) {
-            i++;
+    while (currentNode != nullptr) {
+        // Procura a chave no nó atual
+        auto it = std::lower_bound(currentNode->keys.begin(), currentNode->keys.end(), key);
+        unsigned int index = std::distance(currentNode->keys.begin(), it);
+
+        // Verifica se encontramos a chave
+        if (it != currentNode->keys.end() && *it == key) {
+            return currentNode;
         }
 
-        if (i < node->size && key == node->keys[i]) {
-            if (node->leaf) {
-                // Caso 1: Remoção de uma folha com mais de d+1 elementos
-                if (node->size > ORDER) {
-                    node->keys.erase(node->keys.begin() + i);
-                    node->size--;
-                } else {
-                    // Caso 3 e 4: Remoção de uma folha com d elementos
-                    auto it = std::find(parent->children.begin(), parent->children.end(), node);
-                    size_t index = std::distance(parent->children.begin(), it);
+        // Atualiza o pai e segue para o próximo nó
+        parent = currentNode;
+        currentNode = (index < currentNode->children.size()) ? currentNode->children[index] : nullptr;
+    }
 
-                    BTreeNode<T, ORDER>* rightBrother = (index + 1 < parent->children.size()) ? parent->children[index + 1] : nullptr;
-                    BTreeNode<T, ORDER>* leftBrother = (index > 0) ? parent->children[index - 1] : nullptr;
+    return nullptr; // Chave não encontrada
+}
 
-                    if (rightBrother && (rightBrother->size + node->size) < 2 * ORDER) {
-                        // Caso 3: Concatenação com o irmão da direita
-                        node->keys.push_back(parent->keys[index]);
-                        node->keys.insert(node->keys.end(), rightBrother->keys.begin(), rightBrother->keys.end());
-                        node->size += rightBrother->size + 1;
+void removeAux(BTreeNode<T, ORDER>* parent, BTreeNode<T, ORDER>* node, int key){
+    /**
+     * Em todos os casos, iremos ter primeramente o nó.
+     */
+    BTreeNode<T, ORDER>* currentParent = nullptr;
+    BTreeNode<T, ORDER>* currentNode = search(key, currentParent);
+    if(currentNode == nullptr){
+        std::cout << "No key was found.\n";
+        return;
+    }
 
-                        parent->keys.erase(parent->keys.begin() + index);
-                        parent->children.erase(parent->children.begin() + index + 1);
-                        parent->size--;
+    //
+    // Primeiro caso:
+    // Estamos removendo de um folha.
+    //
 
-                        delete rightBrother;
-                    } else if (leftBrother && (leftBrother->size + node->size) < 2 * ORDER) {
-                        // Caso 3: Concatenação com o irmão da esquerda
-                        leftBrother->keys.push_back(parent->keys[index - 1]);
-                        leftBrother->keys.insert(leftBrother->keys.end(), node->keys.begin(), node->keys.end());
-                        leftBrother->size += node->size + 1;
+    if(currentNode->leaf){
+        if(currentNode->size > ORDER + 1){
+        // CASO 1:
+        // Removemos de uma folha com d + 1 elementos.
+            
+           //< Vamos calcular a posição de índice da chave para remover diretamente ela.
+           auto it = std::find(currentNode->keys.begin(), currentNode->keys.end(), key);
+           size_t index = std::distance(currentNode->keys.begin(), it);
 
-                        parent->keys.erase(parent->keys.begin() + index - 1);
-                        parent->children.erase(parent->children.begin() + index);
-                        parent->size--;
+           //< Removemos a chave (index) e o ponteiro dela (index + 1). Diminuímos o tamanho.
+           currentNode->keys.erase(currentNode->keys.begin() + index); //< Removemos a chave.
+           currentNode->children.erase(currentNode->children.begin() + index + 1); //< Removemos o ponteiro para o filho do removido.
+           currentNode->size--; //< Diminuímos o tamanho.
 
-                        delete node;
-                    } else if (rightBrother && (rightBrother->size + node->size) >= 2 * ORDER) {
-                        // Caso 4: Redistribuição com o irmão da direita
-                        node->keys.push_back(parent->keys[index]);
-                        parent->keys[index] = rightBrother->keys[0];
-                        rightBrother->keys.erase(rightBrother->keys.begin());
-                        rightBrother->size--;
-                    } else if (leftBrother && (leftBrother->size + node->size) >= 2 * ORDER) {
-                        // Caso 4: Redistribuição com o irmão da esquerda
-                        node->keys.insert(node->keys.begin(), parent->keys[index - 1]);
-                        parent->keys[index - 1] = leftBrother->keys.back();
-                        leftBrother->keys.pop_back();
-                        leftBrother->size--;
-                    }
+           std::sort(currentNode->keys.begin(), currentNode->keys.end()); //< Ordenamos as chaves.
+
+        } else if (currentNode->size == ORDER){ // Tenho que achar um jeito de puxar os irmãos.
+            /*
+             * Caso 3: a folha tem d elementos mas possui uma irmã adjacente
+             * e as duas juntas possuem menos de 2d elementos
+             */
+
+            // Cálculo dos nós irmãos adjacentes.
+            auto it = std::find(parent->children.begin(), parent->children.end(), currentNode);
+            size_t index = std::distance(parent->children.begin(), it);
+            BTreeNode<T, ORDER>* rightBrother = (index + 1 < parent->children.size()) ? parent->children[index + 1] : nullptr;
+            BTreeNode<T, ORDER>* leftBrother = (index > 0) ? parent->children[index - 1] : nullptr;
+
+            if((leftBrother && leftBrother->size + currentNode->size <= 2 * ORDER) || 
+               (rightBrother && rightBrother->size + currentNode->size <= 2 * ORDER)) {
+                if(leftBrother && leftBrother->size + currentNode->size <= 2 * ORDER) {
+                    // Fundir com o irmão da esquerda
+                    leftBrother->keys.insert(leftBrother->keys.end(), currentNode->keys.begin(), currentNode->keys.end());
+                    leftBrother->children.insert(leftBrother->children.end(), currentNode->children.begin(), currentNode->children.end());
+                    leftBrother->size += currentNode->size;
+
+                    parent->keys.erase(parent->keys.begin() + index - 1);
+                    parent->children.erase(parent->children.begin() + index);
+                    parent->size--;
+                } else if(rightBrother) {
+                    // Fundir com o irmão da direita
+                    currentNode->keys.insert(currentNode->keys.end(), rightBrother->keys.begin(), rightBrother->keys.end());
+                    currentNode->children.insert(currentNode->children.end(), rightBrother->children.begin(), rightBrother->children.end());
+                    currentNode->size += rightBrother->size;
+
+                    parent->keys.erase(parent->keys.begin() + index);
+                    parent->children.erase(parent->children.begin() + index + 1);
+                    parent->size--;
                 }
             } else {
-                // Caso 2: Remoção de uma chave de um nó não folha
-                BTreeNode<T, ORDER>* leftChild = node->children[i];
-                BTreeNode<T, ORDER>* rightChild = node->children[i + 1];
+                /*
+                 * Caso 4: A folha tem d elementos e possui um irmão adjacente
+                 * com pelo menos 2d elementos. Realizamos uma rotação.
+                 */
 
-                if (leftChild->size > ORDER) {
-                    // Substituir pelo antecessor
-                    T predecessor = getPredecessor(leftChild);
-                    node->keys[i] = predecessor;
-                    removeAux(node, leftChild, predecessor);
-                } else if (rightChild->size > ORDER) {
-                    // Substituir pelo sucessor
-                    T successor = getSuccessor(rightChild);
-                    node->keys[i] = successor;
-                    removeAux(node, rightChild, successor);
-                } else {
-                    // Concatenação dos filhos
-                    leftChild->keys.push_back(node->keys[i]);
-                    leftChild->keys.insert(leftChild->keys.end(), rightChild->keys.begin(), rightChild->keys.end());
-                    leftChild->size += rightChild->size + 1;
+                if(leftBrother && leftBrother->size > ORDER) {
+                    // Rotação para a direita
+                    currentNode->keys.insert(currentNode->keys.begin(), parent->keys[index - 1]);
+                    parent->keys[index - 1] = leftBrother->keys.back();
+                    leftBrother->keys.pop_back();
 
-                    node->keys.erase(node->keys.begin() + i);
-                    node->children.erase(node->children.begin() + i + 1);
-                    node->size--;
+                    if(!leftBrother->leaf) {
+                        currentNode->children.insert(currentNode->children.begin(), leftBrother->children.back());
+                        leftBrother->children.pop_back();
+                    }
 
-                    delete rightChild;
-                    removeAux(parent, node, key);
+                    currentNode->size++;
+                    leftBrother->size--;
+                } else if(rightBrother && rightBrother->size > ORDER) {
+                    // Rotação para a esquerda
+                    currentNode->keys.push_back(parent->keys[index]);
+                    parent->keys[index] = rightBrother->keys.front();
+                    rightBrother->keys.erase(rightBrother->keys.begin());
+
+                    if(!rightBrother->leaf) {
+                        currentNode->children.push_back(rightBrother->children.front());
+                        rightBrother->children.erase(rightBrother->children.begin());
+                    }
+
+                    currentNode->size++;
+                    rightBrother->size--;
                 }
             }
-        } else {
-            if (node->leaf) return;
-            removeAux(node, node->children[i], key);
         }
-    }
+    } else { // Aqui quer dizer que o nó não é uma folha
+        /**
+         * Se o nó não for uma folha, isso quer dizer que ele tem um 
+         * ou mais filhos. Logo, podemos fazer algumas brincadeiras.
+         * 
+         * A primeira coisa que quero fazer é avaliar qual dois dois filhos da 
+         * chave que será removida é ver qual dos dois tem mais elementos.
+         * O que tiver mais elementos, nós tiramos, colocamos no local do pai
+         * e depois removemos o vetor novamente. Perceba que disso estaremos perdendo
+         * um dos ponteiros de filhos do lado que iremos remover.
+         */
+        // Cálculo dos nós irmãos adjacentes.
+        auto it = std::find(parent->children.begin(), parent->children.end(), currentNode);
+        size_t index = std::distance(parent->children.begin(), it);
 
-    T getPredecessor(BTreeNode<T, ORDER>* node) {
-        while (!node->leaf) {
-            node = node->children[node->size];
-        }
-        return node->keys[node->size - 1];
-    }
+        // Verificar os limites para evitar acesso inválido
+        BTreeNode<T, ORDER>* leftBrother = (index > 0) ? parent->children[index - 1] : nullptr;
+        BTreeNode<T, ORDER>* rightBrother = (index + 1 < parent->children.size()) ? parent->children[index + 1] : nullptr;
 
-    T getSuccessor(BTreeNode<T, ORDER>* node) {
-        while (!node->leaf) {
-            node = node->children[0];
+        // Escolher o irmão preferido com base no tamanho (garantindo que eles existam)
+        int chosenBrotherIndex = -1;
+        BTreeNode<T, ORDER>* chosenBrother = nullptr;
+        if (leftBrother && rightBrother){
+            chosenBrother = (rightBrother->size > leftBrother->size) ? rightBrother : leftBrother;
+        } else if (leftBrother){
+            chosenBrother = leftBrother; // Só tem o irmão da esquerda
+            chosenBrotherIndex = leftBrother->keys.size() - 1; // Última posição
+        } else if (rightBrother){
+            chosenBrother = rightBrother; // Só tem o irmão da direita
+            chosenBrotherIndex = 0; // Primeira posição
         }
-        return node->keys[0];
+
+        // Trocamos a chave com o irmão escolhido
+        std::swap(currentNode->keys[index], chosenBrother->keys[chosenBrotherIndex]);
+        chosenBrother->keys.erase(chosenBrother->keys.begin() + chosenBrotherIndex);
+        chosenBrother->size--;
+
+        // Ordenar
+        std::sort(chosenBrother->keys.begin(), chosenBrother->keys.end());
+    }
+}
+
+
+
+    void generateDotAux(BTreeNode<T, ORDER>* node, std::ofstream& dotFile) {
+        if (!node) return;
+
+        // Cria um nó no arquivo .dot
+        dotFile << "node" << node << " [label=\"";
+        for (int i = 0; i < node->size; ++i) {
+            dotFile << node->keys[i];
+            if (i < node->size - 1) dotFile << " | ";
+        }
+        dotFile << "\"];\n";
+
+        // Conecta o nó aos seus filhos
+        if (!node->leaf) {
+            for (int i = 0; i <= node->size; ++i) {
+                if (node->children[i]) {
+                    dotFile << "node" << node << " -> node" << node->children[i] << ";\n";
+                    generateDotAux(node->children[i], dotFile);
+                }
+            }
+        }
     }
 
 public:
@@ -224,10 +312,26 @@ public:
         if (root) delete root;
     }
 
+    void generateDotFile(const std::string& filename) {
+        std::ofstream dotFile(filename);
+        if (!dotFile.is_open()) {
+            std::cerr << "Erro ao abrir o arquivo .dot\n";
+            return;
+        }
+
+        dotFile << "digraph BTree {\n";
+        dotFile << "node [shape=record];\n";
+        generateDotAux(root, dotFile);
+        dotFile << "}\n";
+
+        dotFile.close();
+        std::cout << "Arquivo .dot gerado com sucesso: " << filename << std::endl;
+    }
+
     void insert(T key) {
         insertAux(nullptr, root, 0, key);
     }
-
+  
     void remove(T key) {
         removeAux(nullptr, root, key);
     }
@@ -238,6 +342,10 @@ public:
         } else {
             root->print();
         }
+    }
+
+    BTreeNode<T, ORDER>* search(int key){
+        search(key, this->root);
     }
 };
 

@@ -5,7 +5,7 @@
 
 int main() {
 
-     BTree<int, 2> tree; // Árvore B de ordem 2 (d = 2)
+    BTree<int, 2> tree; // Árvore B de ordem 2 (d = 2)
 
     // Inserção de chaves
     tree.insert(10);
@@ -23,11 +23,18 @@ int main() {
     tree.insert(130);
     tree.insert(140);
     tree.insert(150);
+    tree.insert(160);
+    
+
+    tree.generateDotFile("arvoreB.dot");
 
     std::cout << "Árvore após inserções:" << std::endl;
     tree.printTree();
 
-    // Remoção de chaves
+    tree.remove(110);
+    tree.generateDotFile("arvoreBREM.dot");
+
+    /*// Remoção de chaves
     tree.remove(10);
     tree.remove(20);
     tree.remove(30);
@@ -35,8 +42,11 @@ int main() {
     tree.remove(50);
     tree.remove(60);
 
+    tree.generateDotFile("arvoreBREM.dot");
+    
+
     std::cout << "Árvore após remoções:" << std::endl;
-    tree.printTree();
+    tree.printTree();*/
 
     return 0;
 
