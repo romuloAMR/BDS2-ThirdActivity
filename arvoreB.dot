@@ -1,0 +1,14 @@
+digraph BTree {
+node [shape=record];
+node0xe215a0 [label="30 | 60 | 90 | 120"];
+node0xe215a0 -> node0xe21558;
+node0xe21558 [label="10 | 20"];
+node0xe215a0 -> node0xe21608;
+node0xe21608 [label="40 | 50"];
+node0xe215a0 -> node0xe21670;
+node0xe21670 [label="70 | 80 | 82 | 87"];
+node0xe215a0 -> node0xe21748;
+node0xe21748 [label="100 | 110"];
+node0xe215a0 -> node0xe21790;
+node0xe21790 [label="130 | 140 | 150 | 160"];
+}
